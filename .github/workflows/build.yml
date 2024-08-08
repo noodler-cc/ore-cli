@@ -23,6 +23,7 @@ jobs:
         uses: actions/checkout@v4
       - id: version
         run: echo version="$(cargo metadata --no-deps --quiet --color never | jq -r '.packages[].version')-$(git describe --always --dirty=_modified)" >> "$GITHUB_OUTPUT"
+  
   build:
     name: Build
     needs: version
@@ -49,7 +50,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Rust
         run: rustup target add ${{ matrix.target }}
-      - name: Install additional toolchains and dependencies
+
+      - name: Install additional toolchains
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
           set -x
@@ -59,25 +61,24 @@ jobs:
             x86_64-unknown-linux-musl)
               sudo apt-get update
               sudo apt-get install -y musl-tools libssl-dev pkg-config
-              export OPENSSL_DIR=/usr
-              export PKG_CONFIG_ALLOW_CROSS=1
-              export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig
+              export OPENSSL_DIR=$(openssl version -d | cut -d\" -f2)
+              echo "OPENSSL_DIR=${OPENSSL_DIR}" >> $GITHUB_ENV
               ;;
             aarch64-unknown-linux-gnu)
               sudo apt-get update
               sudo apt-get install -y gcc-aarch64-linux-gnu libssl-dev pkg-config
-              export OPENSSL_DIR=/usr
-              export PKG_CONFIG_ALLOW_CROSS=1
-              export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
               mkdir -p .cargo
               echo '[target.aarch64-unknown-linux-gnu]' >> .cargo/config
               echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config
+              export OPENSSL_DIR=$(openssl version -d | cut -d\" -f2)
+              echo "OPENSSL_DIR=${OPENSSL_DIR}" >> $GITHUB_ENV
               ;;
             x86_64-pc-windows-gnu)
               sudo apt-get update
               sudo apt-get install -y gcc-mingw-w64-x86-64-win32
               ;;
           esac
+      
       - name: Configure cache
         uses: actions/cache@v4
         with:
@@ -88,10 +89,13 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: release-${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Lint
         run: cargo fmt --check
+
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
+
       - name: Strip binary
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
@@ -116,6 +120,7 @@ jobs:
           esac
 
           ${strip} target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}${file_extension}
+
       - name: Package (unix)
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
@@ -130,6 +135,7 @@ jobs:
           mkdir target/dist
           cd target/${{ matrix.target }}/release
           cp ${{ env.BINARY_NAME }}${file_extension} ../../dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${file_extension}
+
       - name: Package (windows)
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
@@ -137,6 +143,7 @@ jobs:
           mkdir target/dist
           cd target/${{ matrix.target }}/release
           cp "${{ env.BINARY_NAME }}.exe" "../../dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}.exe"
+
       - name: Upload archive
         uses: actions/upload-artifact@v4
         with:
