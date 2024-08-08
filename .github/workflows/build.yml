@@ -56,27 +56,28 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Rust
         run: rustup target add ${{ matrix.target }}
-      # https://github.com/mozilla/grcov/blob/cc77ce34164fc3ea80ac579d1c15f36c9734133c/.github/workflows/release.yml#L34
       - name: Install additional toolchains
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
           set -x
+          MUSL_PREFIX="${HOME}/musl"
           case "${{ matrix.target }}" in
             x86_64-unknown-linux-gnu)
               ;;
             x86_64-unknown-linux-musl)
               sudo apt-get update
               sudo apt-get install -y musl-tools libssl-dev pkg-config
-              mkdir -p /usr/local/musl
-              sudo ln -s /usr/include/x86_64-linux-gnu/openssl /usr/local/musl/include
-              sudo ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/libcrypto.pc /usr/local/musl/lib/pkgconfig/libcrypto.pc
-              sudo ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/libssl.pc /usr/local/musl/lib/pkgconfig/libssl.pc
-              sudo ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/openssl.pc /usr/local/musl/lib/pkgconfig/openssl.pc
+              mkdir -p $MUSL_PREFIX/include
+              ln -s /usr/include/x86_64-linux-gnu/openssl $MUSL_PREFIX/include/openssl
+              mkdir -p $MUSL_PREFIX/lib/pkgconfig
+              ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/libcrypto.pc $MUSL_PREFIX/lib/pkgconfig/libcrypto.pc
+              ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/libssl.pc $MUSL_PREFIX/lib/pkgconfig/libssl.pc
+              ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/openssl.pc $MUSL_PREFIX/lib/pkgconfig/openssl.pc
+              export PKG_CONFIG_PATH=$MUSL_PREFIX/lib/pkgconfig
               ;;
             aarch64-unknown-linux-gnu)
               sudo apt-get update
               sudo apt-get install -y gcc-aarch64-linux-gnu
-
               mkdir -p .cargo
               echo '[target.aarch64-unknown-linux-gnu]' >> .cargo/config
               echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config
