@@ -73,30 +73,12 @@ jobs:
           choco install openssl
           choco install pkgconfiglite
 
-      - name: Install additional toolchains
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - name: Install MUSL and OpenSSL dependencies
+        if: matrix.target == 'x86_64-unknown-linux-musl'
         run: |
-          set -x
-          case "${{ matrix.target }}" in
-            x86_64-unknown-linux-gnu)
-              ;;
-            x86_64-unknown-linux-musl)
-              sudo apt-get update
-              sudo apt-get install -y musl-tools
-              ;;
-            aarch64-unknown-linux-gnu)
-              sudo apt-get update
-              sudo apt-get install -y gcc-aarch64-linux-gnu
-
-              mkdir -p .cargo
-              echo '[target.aarch64-unknown-linux-gnu]' >> .cargo/config
-              echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config
-              ;;
-            x86_64-pc-windows-gnu)
-              sudo apt-get update
-              sudo apt-get install -y gcc-mingw-w64-x86-64-win32
-              ;;
-          esac
+          sudo apt-get update
+          sudo apt-get install -y musl-dev libssl-dev pkg-config
+          export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-musl/pkgconfig:$PKG_CONFIG_PATH
 
       - name: Configure cache
         uses: actions/cache@v4
@@ -113,7 +95,12 @@ jobs:
         run: cargo fmt --check
 
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+        run: |
+          if [ "${{ matrix.target }}" == "x86_64-unknown-linux-musl" ]; then
+            export OPENSSL_DIR=/usr
+            export PKG_CONFIG_ALLOW_CROSS=1
+          fi
+          cargo build --release --target ${{ matrix.target }}
 
       - name: Strip binary
         if: ${{ matrix.os != 'windows-latest' }}
