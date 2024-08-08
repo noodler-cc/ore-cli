@@ -1,29 +1,4 @@
-name: Build
-
-on:
-  push:
-    branches: ["master"]
-  workflow_dispatch:
-
-env:
-  CARGO_TERM_COLOR: always
-  BINARY_NAME: ore
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: false
-
 jobs:
-  version:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - id: version
-        run: echo version="$(cargo metadata --no-deps --quiet --color never | jq -r '.packages[].version')-$(git describe --always --dirty=_modified)" >> "$GITHUB_OUTPUT"
-  
   build:
     name: Build
     needs: version
@@ -48,8 +23,29 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Setup Rust
         run: rustup target add ${{ matrix.target }}
+
+      - name: Install OpenSSL dependencies (Linux)
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libssl-dev
+
+      - name: Install OpenSSL dependencies (macOS)
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          brew install openssl pkg-config
+          echo 'export PATH="/usr/local/opt/openssl/bin:$PATH"' >> $GITHUB_ENV
+          echo 'export LDFLAGS="-L/usr/local/opt/openssl/lib"' >> $GITHUB_ENV
+          echo 'export CPPFLAGS="-I/usr/local/opt/openssl/include"' >> $GITHUB_ENV
+
+      - name: Install OpenSSL dependencies (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          choco install openssl
+          choco install pkgconfiglite
 
       - name: Install additional toolchains
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -60,25 +56,22 @@ jobs:
               ;;
             x86_64-unknown-linux-musl)
               sudo apt-get update
-              sudo apt-get install -y musl-tools libssl-dev pkg-config
-              export OPENSSL_DIR=$(openssl version -d | cut -d\" -f2)
-              echo "OPENSSL_DIR=${OPENSSL_DIR}" >> $GITHUB_ENV
+              sudo apt-get install -y musl-tools
               ;;
             aarch64-unknown-linux-gnu)
               sudo apt-get update
-              sudo apt-get install -y gcc-aarch64-linux-gnu libssl-dev pkg-config
+              sudo apt-get install -y gcc-aarch64-linux-gnu
+
               mkdir -p .cargo
               echo '[target.aarch64-unknown-linux-gnu]' >> .cargo/config
               echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config
-              export OPENSSL_DIR=$(openssl version -d | cut -d\" -f2)
-              echo "OPENSSL_DIR=${OPENSSL_DIR}" >> $GITHUB_ENV
               ;;
             x86_64-pc-windows-gnu)
               sudo apt-get update
               sudo apt-get install -y gcc-mingw-w64-x86-64-win32
               ;;
           esac
-      
+
       - name: Configure cache
         uses: actions/cache@v4
         with:
