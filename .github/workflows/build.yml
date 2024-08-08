@@ -73,12 +73,11 @@ jobs:
           choco install openssl
           choco install pkgconfiglite
 
-      - name: Install MUSL and OpenSSL dependencies
-        if: matrix.target == 'x86_64-unknown-linux-musl'
+      - name: Install AArch64 GCC Compiler
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo apt-get update
-          sudo apt-get install -y musl-dev libssl-dev pkg-config
-          export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-musl/pkgconfig:$PKG_CONFIG_PATH
+          sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Configure cache
         uses: actions/cache@v4
@@ -99,6 +98,10 @@ jobs:
           if [ "${{ matrix.target }}" == "x86_64-unknown-linux-musl" ]; then
             export OPENSSL_DIR=/usr
             export PKG_CONFIG_ALLOW_CROSS=1
+          fi
+          if [ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]; then
+            export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+            export CFLAGS_aarch64_unknown_linux_gnu="-O2"
           fi
           cargo build --release --target ${{ matrix.target }}
 
