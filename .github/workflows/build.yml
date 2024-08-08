@@ -73,11 +73,23 @@ jobs:
           choco install openssl
           choco install pkgconfiglite
 
+      - name: Install MUSL GCC Compiler for x86_64-unknown-linux-musl
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+
       - name: Install AArch64 GCC Compiler
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Install MinGW-w64 Compiler for x86_64-pc-windows-gnu
+        if: matrix.target == 'x86_64-pc-windows-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64-win32
 
       - name: Configure cache
         uses: actions/cache@v4
