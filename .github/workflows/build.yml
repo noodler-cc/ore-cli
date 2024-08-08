@@ -67,7 +67,11 @@ jobs:
             x86_64-unknown-linux-musl)
               sudo apt-get update
               sudo apt-get install -y musl-tools libssl-dev pkg-config
-              export OPENSSL_DIR=/usr
+              mkdir -p /usr/local/musl
+              sudo ln -s /usr/include/x86_64-linux-gnu/openssl /usr/local/musl/include
+              sudo ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/libcrypto.pc /usr/local/musl/lib/pkgconfig/libcrypto.pc
+              sudo ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/libssl.pc /usr/local/musl/lib/pkgconfig/libssl.pc
+              sudo ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/openssl.pc /usr/local/musl/lib/pkgconfig/openssl.pc
               ;;
             aarch64-unknown-linux-gnu)
               sudo apt-get update
