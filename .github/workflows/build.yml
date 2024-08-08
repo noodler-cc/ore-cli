@@ -73,6 +73,12 @@ jobs:
           choco install openssl
           choco install pkgconfiglite
 
+      - name: Install AArch64 GCC Compiler and Tools
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+
       - name: Install MUSL GCC Compiler for x86_64-unknown-linux-musl
         if: matrix.target == 'x86_64-unknown-linux-musl'
         run: |
@@ -90,6 +96,16 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-mingw-w64-x86-64-win32
+
+      - name: Configure environment for aarch64-unknown-linux-gnu
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          export CC=aarch64-linux-gnu-gcc
+          export CXX=aarch64-linux-gnu-g++
+          export AR=aarch64-linux-gnu-ar
+          export AS=aarch64-linux-gnu-as
+          export LD=aarch64-linux-gnu-ld
+          export RUSTFLAGS="-C linker=aarch64-linux-gnu-gcc"
 
       - name: Configure cache
         uses: actions/cache@v4
@@ -112,8 +128,12 @@ jobs:
             export PKG_CONFIG_ALLOW_CROSS=1
           fi
           if [ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]; then
-            export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
-            export CFLAGS_aarch64_unknown_linux_gnu="-O2"
+            export CC=aarch64-linux-gnu-gcc
+            export CXX=aarch64-linux-gnu-g++
+            export AR=aarch64-linux-gnu-ar
+            export AS=aarch64-linux-gnu-as
+            export LD=aarch64-linux-gnu-ld
+            export RUSTFLAGS="-C linker=aarch64-linux-gnu-gcc"
           fi
           cargo build --release --target ${{ matrix.target }}
 
