@@ -56,11 +56,25 @@ jobs:
       - name: Setup Rust
         run: rustup target add ${{ matrix.target }}
 
-      - name: Install additional dependencies for OpenSSL
+      - name: Install additional dependencies for OpenSSL and cross-compilation
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
           sudo apt-get update
-          sudo apt-get install -y openssl libssl-dev pkg-config musl-tools gcc-aarch64-linux-gnu gcc-mingw-w64-x86-64-win32
+          sudo apt-get install -y \
+            openssl \
+            libssl-dev \
+            pkg-config \
+            musl-tools \
+            gcc-aarch64-linux-gnu \
+            gcc-mingw-w64-x86-64-win32 \
+            binutils-aarch64-linux-gnu
+
+      - name: Setup cross-compilation linker
+        if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
+        run: |
+          mkdir -p .cargo
+          echo "[target.aarch64-unknown-linux-gnu]" >> .cargo/config
+          echo "linker = \"aarch64-linux-gnu-gcc\"" >> .cargo/config
 
       - name: Configure OpenSSL environment variables
         run: |
