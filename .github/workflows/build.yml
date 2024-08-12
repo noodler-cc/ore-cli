@@ -48,7 +48,7 @@ jobs:
       - name: Build for aarch64 in Docker
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
-          docker run --rm -v $(pwd):/home/rust/src my-rust-cross-aarch64 \
+          docker run --rm -v ${{ github.workspace }}:/home/rust/src -w /home/rust/src my-rust-cross-aarch64 \
           cargo build --release --target aarch64-unknown-linux-gnu
         
       - name: Setup Rust for x86_64
