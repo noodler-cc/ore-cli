@@ -216,10 +216,9 @@ jobs:
           esac
 
           ${strip} target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}${file_extension}
-      - name: Package (unix)
+      - name: Package (non-windows)
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
-          set -x
           file_extension=""
           case "${{ matrix.target }}" in
             x86_64-pc-windows-gnu)
@@ -227,18 +226,38 @@ jobs:
               ;;
           esac
           rm -rf target/dist
-          mkdir target/dist
+          mkdir -p target/dist
           cd target/${{ matrix.target }}/release
           cp ${{ env.BINARY_NAME }}${file_extension} ../../dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${file_extension}
+
       - name: Package (windows)
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
-          if (Test-Path target/dist) { rm -Recurse -Force target/dist }
-          mkdir target/dist
+          if (Test-Path target/dist) { Remove-Item -Recurse -Force target/dist }
+          New-Item -ItemType Directory -Path target/dist
           cd target/${{ matrix.target }}/release
-          cp "${{ env.BINARY_NAME }}.exe" "../../dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}.exe"
+          Copy-Item "${{ env.BINARY_NAME }}.exe" "../../dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}.exe"
+
       - name: Upload archive
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
           path: target/dist/*
+
+      - name: Additional setup for specific targets
+        run: |
+          case "${{ matrix.target }}" in
+            x86_64-unknown-linux-gnu)
+              ;;
+            x86_64-unknown-linux-musl)
+              sudo apt-get update
+              sudo apt-get install -y musl-tools
+              ;;
+            aarch64-unknown-linux-gnu)
+              sudo apt-get update
+              sudo apt-get install -y gcc-aarch64-linux-gnu
+
+              mkdir -p .cargo
+              echo '[target.aarch64-unknown-linux-gnu]' >> .cargo/config
+              echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config
+              ;;
