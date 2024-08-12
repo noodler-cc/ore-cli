@@ -32,24 +32,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
-      - name: Setup Rust
-        run: rustup target add ${{ matrix.target }}
-        
-      - name: Install additional toolchains and dependencies
+      - name: Setup Docker for aarch64
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
-          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
-            sudo apt-get update
-            sudo apt-get install -y gcc-aarch64-linux-gnu libssl-dev:arm64 pkg-config
-            mkdir -p .cargo
-            echo '[target.aarch64-unknown-linux-gnu]' >> .cargo/config
-            echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config
-            export OPENSSL_DIR=/usr/aarch64-linux-gnu
-            export OPENSSL_LIB_DIR=/usr/aarch64-linux-gnu/lib
-            export OPENSSL_INCLUDE_DIR=/usr/aarch64-linux-gnu/include
-          else
-            sudo apt-get update
-            sudo apt-get install -y libssl-dev pkg-config
-          fi
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          docker build -t my-rust-cross-aarch64 -<<EOF
+          FROM rust:latest
+          RUN apt-get update && apt-get install -y \
+              gcc-aarch64-linux-gnu \
+              libssl-dev \
+              pkg-config \
+              && rustup target add aarch64-unknown-linux-gnu
+          EOF
+        
+      - name: Build for aarch64 in Docker
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          docker run --rm -v $(pwd):/home/rust/src my-rust-cross-aarch64 \
+          cargo build --release --target aarch64-unknown-linux-gnu
+        
+      - name: Setup Rust for x86_64
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: rustup target add x86_64-unknown-linux-gnu
         
       - name: Configure cache
         uses: actions/cache@v4
@@ -62,12 +66,9 @@ jobs:
             target/
           key: release-${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
           
-      - name: Build
-        env:
-          OPENSSL_DIR: ${{ env.OPENSSL_DIR }}
-          OPENSSL_LIB_DIR: ${{ env.OPENSSL_LIB_DIR }}
-          OPENSSL_INCLUDE_DIR: ${{ env.OPENSSL_INCLUDE_DIR }}
-        run: cargo build --release --target ${{ matrix.target }}
+      - name: Build for x86_64
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: cargo build --release --target x86_64-unknown-linux-gnu
         
       - name: Strip binary
         run: |
