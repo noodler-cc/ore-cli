@@ -21,8 +21,8 @@ jobs:
       - id: version
         run: echo version="$(cargo metadata --no-deps --quiet --color never | jq -r '.packages[].version')-$(git describe --always --dirty=_modified)" >> "$GITHUB_OUTPUT"
 
-  build:
-    name: Build
+  build-x86_64:
+    name: Build x86_64
     needs: version
     runs-on: ubuntu-latest
     steps:
@@ -59,4 +59,47 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-unknown-linux-gnu
+          path: target/dist/*
+
+  build-aarch64:
+    name: Build aarch64
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y openssl pkg-config libssl-dev
+
+      - name: Setup Rust
+        run: rustup target add aarch64-unknown-linux-gnu
+        
+      - name: Configure cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: release-${{ runner.os }}-cargo-aarch64-unknown-linux-gnu-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build
+        run: cargo build --release --target aarch64-unknown-linux-gnu
+
+      - name: Strip binary
+        run: strip target/aarch64-unknown-linux-gnu/release/${{ env.BINARY_NAME }}
+
+      - name: Package
+        run: |
+          rm -rf target/dist
+          mkdir -p target/dist
+          cp target/aarch64-unknown-linux-gnu/release/${{ env.BINARY_NAME }} target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-aarch64-unknown-linux-gnu
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-aarch64-unknown-linux-gnu
           path: target/dist/*
