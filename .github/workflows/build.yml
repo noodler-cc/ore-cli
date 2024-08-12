@@ -107,7 +107,55 @@ jobs:
                 uses: actions/upload-artifact@v4
                 with:
                   name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
-                  path: target/dist/* 
+                  path: target/dist/*                   jobs:
+                    build:
+                      runs-on: ${{ matrix.os }}
+                      strategy:
+                        matrix:
+                          os: [ubuntu-latest, windows-latest]
+                          target: [x86_64-pc-windows-gnu, x86_64-unknown-linux-gnu]
+                  
+                      steps:
+                        - name: Checkout code
+                          uses: actions/checkout@v2
+                  
+                        - name: Set up Rust
+                          uses: actions-rs/toolchain@v1
+                          with:
+                            toolchain: stable
+                            profile: minimal
+                            override: true
+                  
+                        - name: Build
+                          run: cargo build --release --target ${{ matrix.target }}
+                  
+                        - name: Package (non-windows)
+                          if: ${{ matrix.os != 'windows-latest' }}
+                          run: |
+                            file_extension=""
+                            case "${{ matrix.target }}" in
+                              x86_64-pc-windows-gnu)
+                                file_extension=".exe"
+                                ;;
+                            esac
+                            rm -rf target/dist
+                            mkdir -p target/dist
+                            cd target/${{ matrix.target }}/release
+                            cp ${{ env.BINARY_NAME }}${file_extension} ../../dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${file_extension}
+                  
+                        - name: Package (windows)
+                          if: ${{ matrix.os == 'windows-latest' }}
+                          run: |
+                            if (Test-Path target/dist) { Remove-Item -Recurse -Force target/dist }
+                            New-Item -ItemType Directory -Path target/dist
+                            cd target/${{ matrix.target }}/release
+                            Copy-Item "${{ env.BINARY_NAME }}.exe" "../../dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}.exe"
+                  
+                        - name: Upload archive
+                          uses: actions/upload-artifact@v4
+                          with:
+                            name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
+                            path: target/dist/*
           set -x
           case "${{ matrix.target }}" in
             x86_64-unknown-linux-gnu)
