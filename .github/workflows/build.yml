@@ -262,6 +262,8 @@ jobs:
           OPENSSL_DIR: "/usr/aarch64-linux-gnu"
           OPENSSL_INCLUDE_DIR: "/usr/aarch64-linux-gnu/include"
           OPENSSL_LIB_DIR: "/usr/aarch64-linux-gnu/lib"
+          LDFLAGS: "-L/usr/aarch64-linux-gnu/lib"
+          CPPFLAGS: "-I/usr/aarch64-linux-gnu/include"
         run: cargo build --release --target aarch64-unknown-linux-gnu
         
       - name: Strip binary
