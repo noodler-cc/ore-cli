@@ -227,7 +227,7 @@ jobs:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-pc-windows-msvc
           path: target/dist/*
 
- build-aarch64-ubuntu:
+  build-aarch64-ubuntu:
    name: Build Ubuntu (aarch64)
    needs: version
    runs-on: ubuntu-latest
