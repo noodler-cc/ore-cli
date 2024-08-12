@@ -43,6 +43,8 @@ jobs:
               gcc-aarch64-linux-gnu \
               libssl-dev \
               pkg-config
+          RUN rustup show
+          RUN rustup target list --installed
           EOF
         
       - name: Build for aarch64 in Docker
