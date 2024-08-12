@@ -10,8 +10,20 @@ env:
   BINARY_NAME: ore
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - id: version
+        run: echo version="$(cargo metadata --no-deps --quiet --color never | jq -r '.packages[].version')-$(git describe --always --dirty=_modified)" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build
+    needs: version
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -30,8 +42,7 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: release-${{ runner.os }}-cargo-x86_64-unknown-linux-gnu-${{ hashFiles('**/Cargo.lock') }}
-        
-        
+          
       - name: Build
         run: cargo build --release --target x86_64-unknown-linux-gnu
         
