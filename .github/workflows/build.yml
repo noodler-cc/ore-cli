@@ -52,7 +52,7 @@ jobs:
       - name: Setup Rust
         run: rustup target add ${{ matrix.target }}
 
-      - name: Install additional dependencies for OpenSSL and cross-compilation
+      - name: Install dependencies for OpenSSL and cross-compilation
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
           sudo apt-get update
@@ -62,7 +62,8 @@ jobs:
             musl-tools \
             gcc-mingw-w64-x86-64-win32 \
             binutils-aarch64-linux-gnu \
-            gcc-aarch64-linux-gnu # Ensure aarch64-linux-gnu-gcc is installed
+            gcc-aarch64-linux-gnu \
+            libssl-dev:arm64 # Install OpenSSL development headers for aarch64
 
       - name: Setup cross-compilation linker
         if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
@@ -75,8 +76,8 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
           echo "OPENSSL_DIR=/usr/lib/ssl" >> $GITHUB_ENV
-          echo "OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu" >> $GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=/usr/include/openssl" >> $GITHUB_ENV
+          echo "OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu" >> $GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=/usr/include/aarch64-linux-gnu/openssl" >> $GITHUB_ENV
 
       - name: Configure cache
         uses: actions/cache@v4
