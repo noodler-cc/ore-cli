@@ -22,8 +22,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - id: version
-        run: echo version="$(cargo metadata --no-deps --quiet --color never | jq -r '.packages[].version')-$(git describe --always --dirty=_modified)" >> "$GITHUB_OUTPUT"
-  
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          git_description=$(git describe --always --dirty=_modified)
+          echo "version=${version}-${git_description}" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build
     needs: version
@@ -53,131 +56,72 @@ jobs:
       - name: Setup Rust
         run: rustup target add ${{ matrix.target }}
 
-      - name: Install OpenSSL dependencies (Linux)
-        if: ${{ runner.os == 'Linux' }}
+      - name: Install additional toolchains
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y pkg-config libssl-dev
+          set -x
+          case "${{ matrix.target }}" in
+            x86_64-unknown-linux-musl)
+              sudo apt-get update && sudo apt-get install -y musl-tools
+              ;;
+            aarch64-unknown-linux-gnu)
+              sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+              mkdir -p .cargo
+              echo '[target.aarch64-unknown-linux-gnu]' >> .cargo/config
+              echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config
+              ;;
+            x86_64-pc-windows-gnu)
+              sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64-win32
+              ;;
+          esac
 
-      - name: Install OpenSSL dependencies (macOS)
-        if: ${{ runner.os == 'macOS' }}
-        run: |
-          brew install openssl pkg-config
-          echo 'export PATH="/usr/local/opt/openssl/bin:$PATH"' >> $GITHUB_ENV
-          echo 'export LDFLAGS="-L/usr/local/opt/openssl/lib"' >> $GITHUB_ENV
-          echo 'export CPPFLAGS="-I/usr/local/opt/openssl/include"' >> $GITHUB_ENV
+      - name: Configure cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: release-${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install OpenSSL dependencies (Windows)
-        if: ${{ runner.os == 'Windows' }}
-        run: |
-          choco install openssl
-          choco install pkgconfiglite
+      - name: Lint
+        run: cargo fmt --check
 
-      - name: Install AArch64 GCC Compiler and Tools
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
-
-      - name: Install MUSL GCC Compiler for x86_64-unknown-linux-musl
-        if: matrix.target == 'x86_64-unknown-linux-musl'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y musl-tools
-
-      - name: Install AArch64 GCC Compiler
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-
-      - name: Install MinGW-w64 Compiler for x86_64-pc-windows-gnu
-        if: matrix.target == 'x86_64-pc-windows-gnu'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-mingw-w64-x86-64-win32
-
-      - name: Build project
-        run: |
-          if [ "${{ matrix.target }}" == "x86_64-unknown-linux-musl" ]; then
-            export OPENSSL_DIR=/usr
-            export PKG_CONFIG_ALLOW_CROSS=1
-          elif [ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]; then
-            export CC=aarch64-linux-gnu-gcc
-            export CXX=aarch64-linux-gnu-g++
-            export AR=aarch64-linux-gnu-ar
-            export AS=aarch64-linux-gnu-as
-            export LD=aarch64-linux-gnu-ld
-            export RUSTFLAGS="-C linker=aarch64-linux-gnu-gcc"
-          fi
-          cargo build --release --target ${{ matrix.target }}
-        shell: bash
-
-      - name: Build project (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          if ($env:matrix_target -eq 'x86_64-unknown-linux-musl') {
-            $env:OPENSSL_DIR="/usr"
-            $env:PKG_CONFIG_ALLOW_CROSS="1"
-          }
-          elseif ($env:matrix_target -eq 'aarch64-unknown-linux-gnu') {
-            $env:CC="aarch64-linux-gnu-gcc"
-            $env:CXX="aarch64-linux-gnu-g++"
-            $env:AR="aarch64-linux-gnu-ar"
-            $env:AS="aarch64-linux-gnu-as"
-            $env:LD="aarch64-linux-gnu-ld"
-            $env:RUSTFLAGS="-C linker=aarch64-linux-gnu-gcc"
-          }
-          cargo build --release --target $env:matrix_target
-        shell: pwsh
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Strip binary
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
           set -x
-          strip="strip"
-          file_extension=""
+          strip_tool="strip"
           case "${{ matrix.target }}" in
-            x86_64-unknown-linux-gnu)
-              ;;
-            x86_64-unknown-linux-musl)
+            x86_64-unknown-linux-gnu | x86_64-unknown-linux-musl)
               ;;
             aarch64-unknown-linux-gnu)
-              strip=aarch64-linux-gnu-strip
-              ;;
-            aarch64-unknown-linux-musl)
-              strip=aarch64-linux-musl-strip
+              strip_tool=aarch64-linux-gnu-strip
               ;;
             x86_64-pc-windows-gnu)
-              strip=x86_64-w64-mingw32-strip
-              file_extension=".exe"
+              strip_tool=x86_64-w64-mingw32-strip
               ;;
           esac
-
-          ${strip} target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}${file_extension}
+          $strip_tool target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}
 
       - name: Package (unix)
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
           set -x
-          file_extension=""
-          case "${{ matrix.target }}" in
-            x86_64-pc-windows-gnu)
-              file_extension=".exe"
-              ;;
-          esac
           rm -rf target/dist
-          mkdir target/dist
-          cd target/${{ matrix.target }}/release
-          cp ${{ env.BINARY_NAME }}${file_extension} ../../dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${file_extension}
+          mkdir -p target/dist
+          cp target/${{ matrix.target }}/release/${{ env.BINARY_NAME }} target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
 
       - name: Package (windows)
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
-          if (Test-Path target/dist) { rm -Recurse -Force target/dist }
-          mkdir target/dist
-          cd target/${{ matrix.target }}/release
-          cp "${{ env.BINARY_NAME }}.exe" "../../dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}.exe"
+          if (Test-Path target/dist) { Remove-Item -Recurse -Force target/dist }
+          New-Item -Path target/dist -ItemType Directory
+          Copy-Item -Path target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}.exe -Destination target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}.exe
 
       - name: Upload archive
         uses: actions/upload-artifact@v4
