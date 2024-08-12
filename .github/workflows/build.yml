@@ -21,16 +21,19 @@ jobs:
       - id: version
         run: echo version="$(cargo metadata --no-deps --quiet --color never | jq -r '.packages[].version')-$(git describe --always --dirty=_modified)" >> "$GITHUB_OUTPUT"
 
-  build-x86_64:
-    name: Build x86_64
+  build-macos:
+    name: Build macOS
     needs: version
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        
+
+      - name: Install dependencies
+        run: brew install openssl pkg-config
+
       - name: Setup Rust
-        run: rustup target add x86_64-unknown-linux-gnu
+        run: rustup target add x86_64-apple-darwin
         
       - name: Configure cache
         uses: actions/cache@v4
@@ -41,67 +44,22 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: release-${{ runner.os }}-cargo-x86_64-unknown-linux-gnu-${{ hashFiles('**/Cargo.lock') }}
-          
-      - name: Build
-        run: cargo build --release --target x86_64-unknown-linux-gnu
-        
-      - name: Strip binary
-        run: strip target/x86_64-unknown-linux-gnu/release/${{ env.BINARY_NAME }}
-        
-      - name: Package
-        run: |
-          rm -rf target/dist
-          mkdir -p target/dist
-          cp target/x86_64-unknown-linux-gnu/release/${{ env.BINARY_NAME }} target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-unknown-linux-gnu
-          
-      - name: Upload archive
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-unknown-linux-gnu
-          path: target/dist/*
+          key: release-${{ runner.os }}-cargo-x86_64-apple-darwin-${{ hashFiles('**/Cargo.lock') }}
 
-  build-aarch64:
-    name: Build aarch64
-    needs: version
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-    
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openssl pkg-config libssl-dev gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-    
-      - name: Install Rust nightly and components
-        run: |
-          rustup toolchain install nightly
-          rustup default nightly
-          rustup target add aarch64-unknown-linux-gnu --toolchain nightly
-          rustup component add rust-src --toolchain nightly
-          rustup component add rust-std --toolchain nightly --target aarch64-unknown-linux-gnu
-    
-      - name: Install xargo
-        run: cargo install xargo
-    
-      - name: Build with xargo
-        env:
-          RUSTFLAGS: "-C linker=aarch64-linux-gnu-gcc"
-        run: |
-          xargo build --release --target aarch64-unknown-linux-gnu
-        
+      - name: Build
+        run: cargo build --release --target x86_64-apple-darwin
+
       - name: Strip binary
-        run: strip target/aarch64-unknown-linux-gnu/release/${{ env.BINARY_NAME }}
-        
+        run: strip target/x86_64-apple-darwin/release/${{ env.BINARY_NAME }}
+
       - name: Package
         run: |
           rm -rf target/dist
           mkdir -p target/dist
-          cp target/aarch64-unknown-linux-gnu/release/${{ env.BINARY_NAME }} target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-aarch64-unknown-linux-gnu
-        
+          cp target/x86_64-apple-darwin/release/${{ env.BINARY_NAME }} target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-apple-darwin
+
       - name: Upload archive
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-aarch64-unknown-linux-gnu
+          name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-apple-darwin
           path: target/dist/*
