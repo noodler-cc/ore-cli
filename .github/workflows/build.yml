@@ -228,64 +228,47 @@ jobs:
           path: target/dist/*
 
   build-aarch64-ubuntu:
-      name: Build Ubuntu (aarch64)
-      needs: version
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v4
-            
-        - name: Install dependencies
-          run: |
-            sudo apt-get update
-            sudo apt-get install -y gcc-aarch64-linux-gnu openssl pkg-config libssl-dev
-            sudo apt-get install -y crossbuild-essential-arm64
-            
-        - name: Setup Rust
-          run: rustup target add aarch64-unknown-linux-gnu
-          
-        - name: Configure cache
-          uses: actions/cache@v4
-          with:
-            path: |
-              ~/.cargo/bin/
-              ~/.cargo/registry/index/
-              ~/.cargo/registry/cache/
-              ~/.cargo/git/db/
-              target/
-            key: release-${{ runner.os }}-cargo-aarch64-unknown-linux-gnu-${{ hashFiles('**/Cargo.lock') }}
-            
-        - name: Build
-          env:
-            CC: aarch64-linux-gnu-gcc
-            CXX: aarch64-linux-gnu-g++
-            RUSTFLAGS: "-C linker=aarch64-linux-gnu-gcc"
-            OPENSSL_DIR: "/usr"
-            OPENSSL_INCLUDE_DIR: "/usr/include/aarch64-linux-gnu"
-            OPENSSL_LIB_DIR: "/usr/lib/aarch64-linux-gnu"
-          run: |
-            # Vérifiez si les répertoires existent
-            if [ ! -d "$OPENSSL_INCLUDE_DIR" ]; then
-              echo "OpenSSL include directory does not exist: $OPENSSL_INCLUDE_DIR"
-              exit 1
-            fi
-            if [ ! -d "$OPENSSL_LIB_DIR" ]; then
-              echo "OpenSSL lib directory does not exist: $OPENSSL_LIB_DIR"
-              exit 1
-            fi
-            cargo build --release --target aarch64-unknown-linux-gnu
-            
-        - name: Strip binary
-          run: aarch64-linux-gnu-strip target/aarch64-unknown-linux-gnu/release/${{ env.BINARY_NAME }}
-            
-        - name: Package
-          run: |
-            rm -rf target/dist
-            mkdir -p target/dist
-            cp target/aarch64-unknown-linux-gnu/release/${{ env.BINARY_NAME }} target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-aarch64-unknown-linux-gnu
-            
-        - name: Upload archive
-          uses: actions/upload-artifact@v4
-          with:
-            name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-aarch64-unknown-linux-gnu
-            path: target/dist/*
+    name: Build Ubuntu (aarch64)
+    needs: version
+    runs-on: ubuntu-22.04
+    architecture: arm64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+    
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssl pkg-config libssl-dev
+    
+      - name: Setup Rust
+        run: rustup target add aarch64-unknown-linux-gnu
+    
+      - name: Configure cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: release-${{ runner.os }}-cargo-aarch64-unknown-linux-gnu-${{ hashFiles('**/Cargo.lock') }}
+        
+      - name: Build
+        run: cargo build --release --target aarch64-unknown-linux-gnu
+        
+      - name: Strip binary
+        run: strip target/aarch64-unknown-linux-gnu/release/${{ env.BINARY_NAME }}
+        
+      - name: Package
+        run: |
+          rm -rf target/dist
+          mkdir -p target/dist
+          cp target/aarch64-unknown-linux-gnu/release/${{ env.BINARY_NAME }} target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-aarch64-unknown-linux-gnu
+        
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-aarch64-unknown-linux-gnu
+          path: target/dist/*
