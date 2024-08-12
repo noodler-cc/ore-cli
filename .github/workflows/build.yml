@@ -257,10 +257,12 @@ jobs:
       - name: Build
         env:
           CC: aarch64-linux-gnu-gcc
+          CXX: aarch64-linux-gnu-g++
+          RUSTFLAGS: "-C linker=aarch64-linux-gnu-gcc"
         run: cargo build --release --target aarch64-unknown-linux-gnu
         
       - name: Strip binary
-        run: strip target/aarch64-unknown-linux-gnu/release/${{ env.BINARY_NAME }}
+        run: aarch64-linux-gnu-strip target/aarch64-unknown-linux-gnu/release/${{ env.BINARY_NAME }}
         
       - name: Package
         run: |
