@@ -259,6 +259,7 @@ jobs:
           CC: aarch64-linux-gnu-gcc
           CXX: aarch64-linux-gnu-g++
           RUSTFLAGS: "-C linker=aarch64-linux-gnu-gcc"
+          OPENSSL_DIR: "/usr/aarch64-linux-gnu"
         run: cargo build --release --target aarch64-unknown-linux-gnu
         
       - name: Strip binary
