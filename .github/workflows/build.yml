@@ -56,24 +56,15 @@ jobs:
       - name: Setup Rust
         run: rustup target add ${{ matrix.target }}
 
-      - name: Install additional toolchains
+      - name: Install additional dependencies for OpenSSL
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
-          set -x
-          case "${{ matrix.target }}" in
-            x86_64-unknown-linux-musl)
-              sudo apt-get update && sudo apt-get install -y musl-tools
-              ;;
-            aarch64-unknown-linux-gnu)
-              sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
-              mkdir -p .cargo
-              echo '[target.aarch64-unknown-linux-gnu]' >> .cargo/config
-              echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config
-              ;;
-            x86_64-pc-windows-gnu)
-              sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64-win32
-              ;;
-          esac
+          sudo apt-get update
+          sudo apt-get install -y openssl libssl-dev pkg-config musl-tools gcc-aarch64-linux-gnu gcc-mingw-w64-x86-64-win32
+
+      - name: Configure OpenSSL environment variables
+        run: |
+          echo "OPENSSL_DIR=$(openssl version -d | cut -d'"' -f2)" >> $GITHUB_ENV
 
       - name: Configure cache
         uses: actions/cache@v4
