@@ -239,6 +239,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu openssl pkg-config libssl-dev
+          sudo apt-get install -y crossbuild-essential-arm64
           
       - name: Setup Rust
         run: rustup target add aarch64-unknown-linux-gnu
@@ -259,9 +260,9 @@ jobs:
           CC: aarch64-linux-gnu-gcc
           CXX: aarch64-linux-gnu-g++
           RUSTFLAGS: "-C linker=aarch64-linux-gnu-gcc"
-          OPENSSL_DIR: "/usr/aarch64-linux-gnu"
-          OPENSSL_INCLUDE_DIR: "/usr/aarch64-linux-gnu/include"
-          OPENSSL_LIB_DIR: "/usr/aarch64-linux-gnu/lib"
+          OPENSSL_DIR: "/usr"
+          OPENSSL_INCLUDE_DIR: "/usr/include"
+          OPENSSL_LIB_DIR: "/usr/lib/aarch64-linux-gnu"
         run: cargo build --release --target aarch64-unknown-linux-gnu
           
       - name: Strip binary
