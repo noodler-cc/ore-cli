@@ -86,11 +86,16 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.target == 'aarch64-unknown-linux-gnu' }}
         run: |
           sudo apt-get update
-          sudo apt-get install -y libssl-dev
-          sudo apt-get install -y libssl-dev:arm64
-          echo "OPENSSL_DIR=/usr/lib/ssl" >> $GITHUB_ENV
-          echo "OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu" >> $GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=/usr/include/openssl" >> $GITHUB_ENV
+          sudo apt-get install -y build-essential checkinstall zlib1g-dev
+          wget https://www.openssl.org/source/openssl-3.0.2.tar.gz
+          tar -xvf openssl-3.0.2.tar.gz
+          cd openssl-3.0.2
+          ./Configure linux-aarch64 --prefix=/usr/local/ssl --openssldir=/usr/local/ssl shared
+          make
+          sudo make install
+          echo "OPENSSL_DIR=/usr/local/ssl" >> $GITHUB_ENV
+          echo "OPENSSL_LIB_DIR=/usr/local/ssl/lib" >> $GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=/usr/local/ssl/include" >> $GITHUB_ENV
       - name: Configure cache
         uses: actions/cache@v4
         with:
@@ -101,6 +106,8 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: release-${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+      - name: Lint
+        run: cargo fmt --check
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
       - name: Strip binary
