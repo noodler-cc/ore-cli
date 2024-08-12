@@ -227,49 +227,55 @@ jobs:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-pc-windows-msvc
           path: target/dist/*
 
-  build-aarch64-ubuntu:
-    name: Build Ubuntu (aarch64)
-    needs: version
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-          
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang llvm lld openssl pkg-config libssl-dev gcc-aarch64-linux-gnu libc6-dev-arm64-cross
-          
-      - name: Setup Rust
-        run: rustup target add aarch64-unknown-linux-gnu
-          
-      - name: Setup sysroot
-        run: |
-          SYSROOT=/usr/aarch64-linux-gnu
-          export SYSROOT
-          mkdir -p $SYSROOT/lib
-          cp -r /usr/aarch64-linux-gnu/lib/* $SYSROOT/lib/
-          cp -r /usr/aarch64-linux-gnu/include $SYSROOT/include
-          
-      - name: Build
-        env:
-          CC: clang
-          CXX: clang++
-          AR: llvm-ar
-          RUSTFLAGS: "-C linker=clang -C link-arg=--target=aarch64-linux-gnu -C link-arg=--sysroot=$SYSROOT"
-        run: cargo build --release --target aarch64-unknown-linux-gnu
-          
-      - name: Strip binary
-        run: llvm-strip target/aarch64-unknown-linux-gnu/release/${{ env.BINARY_NAME }}
-          
-      - name: Package
-        run: |
-          rm -rf target/dist
-          mkdir -p target/dist
-          cp target/aarch64-unknown-linux-gnu/release/${{ env.BINARY_NAME }} target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-aarch64-unknown-linux-gnu
-          
-      - name: Upload archive
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-aarch64-unknown-linux-gnu
-          path: target/dist/*
+ build-aarch64-ubuntu:
+   name: Build Ubuntu (aarch64)
+   needs: version
+   runs-on: ubuntu-latest
+   steps:
+     - name: Checkout repository
+       uses: actions/checkout@v4
+
+     - name: Install dependencies
+       run: |
+         sudo apt-get update
+         sudo apt-get install -y build-essential gcc-aarch64-linux-gnu openssl pkg-config libssl-dev
+
+     - name: Setup Rust
+       run: rustup target add aarch64-unknown-linux-gnu
+       
+     - name: Configure cache
+       uses: actions/cache@v4
+       with:
+         path: |
+           ~/.cargo/bin/
+           ~/.cargo/registry/index/
+           ~/.cargo/registry/cache/
+           ~/.cargo/git/db/
+           target/
+         key: release-${{ runner.os }}-cargo-aarch64-unknown-linux-gnu-${{ hashFiles('**/Cargo.lock') }}
+
+     - name: Build
+       env:
+         CC: aarch64-linux-gnu-gcc
+         CXX: aarch64-linux-gnu-g++
+         RUSTFLAGS: "-C linker=aarch64-linux-gnu-gcc"
+         OPENSSL_DIR: "/usr/aarch64-linux-gnu"
+         OPENSSL_INCLUDE_DIR: "/usr/aarch64-linux-gnu/include"
+         OPENSSL_LIB_DIR: "/usr/aarch64-linux-gnu/lib"
+       run: cargo build --release --target aarch64-unknown-linux-gnu
+
+     - name: Strip binary
+       run: aarch64-linux-gnu-strip target/aarch64-unknown-linux-gnu/release/${{ env.BINARY_NAME }}
+
+     - name: Package
+       run: |
+         rm -rf target/dist
+         mkdir -p target/dist
+         cp target/aarch64-unknown-linux-gnu/release/${{ env.BINARY_NAME }} target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-aarch64-unknown-linux-gnu
+
+     - name: Upload archive
+       uses: actions/upload-artifact@v4
+       with:
+         name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-aarch64-unknown-linux-gnu
+         path: target/dist/*
+ path: target/dist/*
