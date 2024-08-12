@@ -31,46 +31,16 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        
-      - name: Setup Docker for aarch64
+
+      - name: Build for aarch64 using Docker
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-          docker build -t my-rust-cross-aarch64 -<<EOF
-          FROM rust:latest
-          RUN rustup target add aarch64-unknown-linux-gnu
-          RUN apt-get update && apt-get install -y \
-              gcc-aarch64-linux-gnu \
-              libssl-dev \
-              pkg-config
-          RUN rustup show
-          RUN rustup target list --installed
-          EOF
-        
-      - name: Build for aarch64 in Docker
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          docker run --rm -v ${{ github.workspace }}:/home/rust/src -w /home/rust/src my-rust-cross-aarch64 \
+          docker run --rm -v ${{ github.workspace }}:/home/rust/src -w /home/rust/src messense/rust-musl-cross:aarch64-musl \
           cargo build --release --target aarch64-unknown-linux-gnu
         
-      - name: Setup Rust for x86_64
-        if: matrix.target == 'x86_64-unknown-linux-gnu'
-        run: rustup target add x86_64-unknown-linux-gnu
-        
-      - name: Configure cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: release-${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-          
       - name: Build for x86_64
         if: matrix.target == 'x86_64-unknown-linux-gnu'
-        run: cargo build --release --target x86_64-unknown-linux-gnu
+        run: rustup target add x86_64-unknown-linux-gnu && cargo build --release --target x86_64-unknown-linux-gnu
         
       - name: Strip binary
         run: |
