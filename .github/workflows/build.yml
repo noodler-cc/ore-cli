@@ -22,8 +22,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - id: version
-        run: echo "version=$(cargo metadata --no-deps --quiet --color never | jq -r '.packages[].version')-$(git describe --always --dirty=_modified)" >> "$GITHUB_OUTPUT"
-
+        run: echo version="$(cargo metadata --no-deps --quiet --color never | jq -r '.packages[].version')-$(git describe --always --dirty=_modified)" >> "$GITHUB_OUTPUT"
   build:
     name: Build
     needs: version
@@ -60,7 +59,55 @@ jobs:
       # https://github.com/mozilla/grcov/blob/cc77ce34164fc3ea80ac579d1c15f36c9734133c/.github/workflows/release.yml#L34
       - name: Install additional toolchains
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: |
+        run: |        jobs:
+          build:
+            runs-on: ${{ matrix.os }}
+            strategy:
+              matrix:
+                os: [ubuntu-latest, windows-latest]
+                target: [x86_64-pc-windows-gnu, x86_64-unknown-linux-gnu]
+        
+            steps:
+              - name: Checkout code
+                uses: actions/checkout@v2
+        
+              - name: Set up Rust
+                uses: actions-rs/toolchain@v1
+                with:
+                  toolchain: stable
+                  profile: minimal
+                  override: true
+        
+              - name: Build
+                run: cargo build --release --target ${{ matrix.target }}
+        
+              - name: Package (non-windows)
+                if: ${{ matrix.os != 'windows-latest' }}
+                run: |
+                  file_extension=""
+                  case "${{ matrix.target }}" in
+                    x86_64-pc-windows-gnu)
+                      file_extension=".exe"
+                      ;;
+                  esac
+                  rm -rf target/dist
+                  mkdir -p target/dist
+                  cd target/${{ matrix.target }}/release
+                  cp ${{ env.BINARY_NAME }}${file_extension} ../../dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${file_extension}
+        
+              - name: Package (windows)
+                if: ${{ matrix.os == 'windows-latest' }}
+                run: |
+                  if (Test-Path target/dist) { Remove-Item -Recurse -Force target/dist }
+                  New-Item -ItemType Directory -Path target/dist
+                  cd target/${{ matrix.target }}/release
+                  Copy-Item "${{ env.BINARY_NAME }}.exe" "../../dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}.exe"
+        
+              - name: Upload archive
+                uses: actions/upload-artifact@v4
+                with:
+                  name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
+                  path: target/dist/* 
           set -x
           case "${{ matrix.target }}" in
             x86_64-unknown-linux-gnu)
@@ -82,20 +129,6 @@ jobs:
               sudo apt-get install -y gcc-mingw-w64-x86-64-win32
               ;;
           esac
-      - name: Install OpenSSL for cross-compilation
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.target == 'aarch64-unknown-linux-gnu' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential checkinstall zlib1g-dev
-          wget https://www.openssl.org/source/openssl-3.0.2.tar.gz
-          tar -xvf openssl-3.0.2.tar.gz
-          cd openssl-3.0.2
-          ./Configure linux-aarch64 --prefix=/usr/local/ssl --openssldir=/usr/local/ssl shared
-          make
-          sudo make install
-          echo "OPENSSL_DIR=/usr/local/ssl" >> $GITHUB_ENV
-          echo "OPENSSL_LIB_DIR=/usr/local/ssl/lib" >> $GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=/usr/local/ssl/include" >> $GITHUB_ENV
       - name: Configure cache
         uses: actions/cache@v4
         with:
@@ -106,7 +139,10 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: release-${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+      - name: Lint
+        run: cargo fmt --check
       - name: Build
+        # run: cargo build --release --locked --target ${{ matrix.target }}
         run: cargo build --release --target ${{ matrix.target }}
       - name: Strip binary
         if: ${{ matrix.os != 'windows-latest' }}
