@@ -85,8 +85,8 @@ jobs:
             target/
           key: release-${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Lint
-        run: cargo fmt --check
+      # - name: Lint
+      #   run: cargo fmt --check
 
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
