@@ -77,8 +77,11 @@ jobs:
           echo "linker = \"aarch64-linux-gnu-gcc\"" >> .cargo/config
 
       - name: Configure OpenSSL environment variables
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
-          echo "OPENSSL_DIR=$(openssl version -d | cut -d'"' -f2)" >> $GITHUB_ENV
+          echo "OPENSSL_DIR=/usr/lib/ssl" >> $GITHUB_ENV
+          echo "OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu" >> $GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=/usr/include/openssl" >> $GITHUB_ENV
 
       - name: Configure cache
         uses: actions/cache@v4
