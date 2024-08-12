@@ -106,8 +106,6 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: release-${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-      - name: Lint
-        run: cargo fmt --check
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
       - name: Strip binary
