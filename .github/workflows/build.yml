@@ -38,11 +38,11 @@ jobs:
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
           docker build -t my-rust-cross-aarch64 -<<EOF
           FROM rust:latest
+          RUN rustup target add aarch64-unknown-linux-gnu
           RUN apt-get update && apt-get install -y \
               gcc-aarch64-linux-gnu \
               libssl-dev \
-              pkg-config \
-              && rustup target add aarch64-unknown-linux-gnu
+              pkg-config
           EOF
         
       - name: Build for aarch64 in Docker
