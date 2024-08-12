@@ -64,8 +64,8 @@ jobs:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-unknown-linux-gnu
           path: target/dist/*
 
-  build-macos:
-    name: Build macOS
+  build-macos-x86_64:
+    name: Build macOS (x86_64)
     needs: version
     runs-on: macos-latest
     steps:
@@ -105,6 +105,49 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-apple-darwin
+          path: target/dist/*
+
+  build-macos-aarch64:
+    name: Build macOS (aarch64)
+    needs: version
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: brew install openssl pkg-config
+
+      - name: Setup Rust
+        run: rustup target add aarch64-apple-darwin
+        
+      - name: Configure cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: release-${{ runner.os }}-cargo-aarch64-apple-darwin-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build
+        run: cargo build --release --target aarch64-apple-darwin
+
+      - name: Strip binary
+        run: strip target/aarch64-apple-darwin/release/${{ env.BINARY_NAME }}
+
+      - name: Package
+        run: |
+          rm -rf target/dist
+          mkdir -p target/dist
+          cp target/aarch64-apple-darwin/release/${{ env.BINARY_NAME }} target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-aarch64-apple-darwin
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-aarch64-apple-darwin
           path: target/dist/*
 
   build-windows:
