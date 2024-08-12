@@ -41,12 +41,8 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
           - os: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-          - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
           - os: windows-latest
-            target: x86_64-pc-windows-msvc
-          - os: ubuntu-latest
             target: x86_64-pc-windows-gnu
 
     steps:
@@ -63,9 +59,7 @@ jobs:
           sudo apt-get install -y \
             openssl \
             libssl-dev \
-            pkg-config \
             musl-tools \
-            gcc-aarch64-linux-gnu \
             gcc-mingw-w64-x86-64-win32 \
             binutils-aarch64-linux-gnu
 
@@ -76,7 +70,7 @@ jobs:
           echo "[target.aarch64-unknown-linux-gnu]" >> .cargo/config
           echo "linker = \"aarch64-linux-gnu-gcc\"" >> .cargo/config
 
-      - name: Configure OpenSSL environment variables
+      - name: Configure OpenSSL environment variables for Ubuntu
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
           echo "OPENSSL_DIR=/usr/lib/ssl" >> $GITHUB_ENV
@@ -105,7 +99,7 @@ jobs:
           set -x
           strip_tool="strip"
           case "${{ matrix.target }}" in
-            x86_64-unknown-linux-gnu | x86_64-unknown-linux-musl)
+            x86_64-unknown-linux-gnu)
               ;;
             aarch64-unknown-linux-gnu)
               strip_tool=aarch64-linux-gnu-strip
