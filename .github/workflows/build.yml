@@ -197,10 +197,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+    
       - name: Setup Rust
         run: rustup target add x86_64-pc-windows-msvc
-
+    
       - name: Configure cache
         uses: actions/cache@v4
         with:
@@ -211,16 +211,16 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: release-${{ runner.os }}-cargo-x86_64-pc-windows-msvc-${{ hashFiles('**/Cargo.lock') }}
-
+        
       - name: Build
         run: cargo build --release --target x86_64-pc-windows-msvc
-
+        
       - name: Package
         run: |
-          rm -rf target/dist
-          mkdir -p target/dist
-          cp target/x86_64-pc-windows-msvc/release/${{ env.BINARY_NAME }}.exe target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-pc-windows-msvc.exe
-
+          if (Test-Path target/dist) { Remove-Item -Recurse -Force target/dist }
+          New-Item -ItemType Directory -Force -Path target/dist
+          Copy-Item target/x86_64-pc-windows-msvc/release/${{ env.BINARY_NAME }}.exe target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-pc-windows-msvc.exe
+        
       - name: Upload archive
         uses: actions/upload-artifact@v4
         with:
