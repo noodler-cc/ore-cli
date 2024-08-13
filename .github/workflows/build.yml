@@ -1,4 +1,4 @@
-name: Build
+name: Publish Crate and Upload Builds
 
 on:
   release:
@@ -74,19 +74,6 @@ jobs:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
           path: target/dist/*
 
-      - name: Debug - Check file existence
-        run: ls -alh target/dist
-
-      - name: Upload release asset
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${{ matrix.target == 'x86_64-pc-windows-gnu' && '.exe' || '' }}
-          asset_name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${{ matrix.target == 'x86_64-pc-windows-gnu' && '.exe' || '' }}
-          asset_content_type: application/octet-stream
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   build-macos:
     name: Build on macOS
     needs: version
@@ -133,19 +120,6 @@ jobs:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
           path: target/dist/*
 
-      - name: Debug - Check file existence
-        run: ls -alh target/dist
-
-      - name: Upload release asset
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
-          asset_name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
-          asset_content_type: application/octet-stream
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   build-windows-msvc:
     name: Build on Windows (MSVC)
     needs: version
@@ -183,10 +157,31 @@ jobs:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-pc-windows-msvc
           path: target/dist/*
 
-      - name: Debug - Check file existence
-        run: Get-ChildItem -Path target/dist
+  upload-assets:
+    name: Upload Release Assets
+    needs: [build-ubuntu, build-macos, build-windows-msvc]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Upload release asset
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-unknown-linux-gnu
+          path: target/dist
+
+      - name: Upload Ubuntu asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-unknown-linux-gnu
+          asset_name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-unknown-linux-gnu
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows asset
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ github.event.release.upload_url }}
@@ -195,3 +190,35 @@ jobs:
           asset_content_type: application/octet-stream
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload macOS asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-apple-darwin
+          asset_name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-apple-darwin
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-crates-io:
+    name: Publish to crates.io
+    needs: [build-ubuntu, build-macos, build-windows-msvc]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install Dependencies
+        run: cargo fetch
+
+      - name: Publish to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish
