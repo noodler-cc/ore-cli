@@ -3,10 +3,10 @@ name: Rust CI
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   build_and_test:
@@ -20,6 +20,9 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
+
+    - name: Install Clippy
+      run: rustup component add clippy
 
     - name: Cache cargo registry
       uses: actions/cache@v3
