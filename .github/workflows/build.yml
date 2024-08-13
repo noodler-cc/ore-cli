@@ -74,9 +74,6 @@ jobs:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
           path: target/dist/*
 
-      - name: Wait for file sync
-        run: sleep 5
-
       - name: Debug - Check file existence
         run: ls -alh target/dist
 
@@ -87,6 +84,8 @@ jobs:
           asset_path: target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${{ matrix.target == 'x86_64-pc-windows-gnu' && '.exe' || '' }}
           asset_name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${{ matrix.target == 'x86_64-pc-windows-gnu' && '.exe' || '' }}
           asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-macos:
     name: Build on macOS
@@ -134,9 +133,6 @@ jobs:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
           path: target/dist/*
 
-      - name: Wait for file sync
-        run: sleep 5
-
       - name: Debug - Check file existence
         run: ls -alh target/dist
 
@@ -147,6 +143,8 @@ jobs:
           asset_path: target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
           asset_name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
           asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-windows-msvc:
     name: Build on Windows (MSVC)
@@ -185,9 +183,6 @@ jobs:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-pc-windows-msvc
           path: target/dist/*
 
-      - name: Wait for file sync
-        run: Start-Sleep -Seconds 5
-
       - name: Debug - Check file existence
         run: Get-ChildItem -Path target/dist
 
@@ -198,3 +193,5 @@ jobs:
           asset_path: target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-pc-windows-msvc.exe
           asset_name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-pc-windows-msvc.exe
           asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
