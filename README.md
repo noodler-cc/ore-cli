@@ -1,5 +1,8 @@
 # ORE CLI
 
+[![Rust CI](https://github.com/noodler-cc/ore-cli/actions/workflows/test.yml/badge.svg)](https://github.com/noodler-cc/ore-cli/actions/workflows/test.yml)
+[![Build](https://github.com/noodler-cc/ore-cli/actions/workflows/build.yml/badge.svg)](https://github.com/noodler-cc/ore-cli/actions/workflows/build.yml)
+
 A command line interface for ORE cryptocurrency mining.
 
 ## Install
