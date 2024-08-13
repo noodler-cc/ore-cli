@@ -9,7 +9,7 @@ on:
       - master
 
 jobs:
-  build:
+  build_and_test:
     runs-on: ubuntu-latest
 
     steps:
@@ -50,3 +50,9 @@ jobs:
 
     - name: Run tests
       run: cargo test --verbose
+
+    - name: Run clippy
+      run: cargo clippy -- -D warnings
+
+    - name: Check formatting
+      run: cargo fmt -- --check
