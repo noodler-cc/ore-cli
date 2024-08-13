@@ -1,4 +1,4 @@
-name: Build, Upload, and Publish Crate
+name: Publish Crate and Upload Builds
 
 on:
   release:
@@ -9,81 +9,77 @@ env:
   BINARY_NAME: ore
 
 jobs:
-  version:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
-      - id: version
-        run: echo version="$(cargo metadata --no-deps --quiet --color never | jq -r '.packages[].version')-$(git describe --always --dirty=_modified)" >> "$GITHUB_OUTPUT"
-
-  build:
-    name: Build
-    needs: version
+  build-and-publish:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        target:
-          - x86_64-unknown-linux-gnu
-          - x86_64-pc-windows-gnu
-          - x86_64-pc-windows-msvc
-          - x86_64-apple-darwin
-          - aarch64-apple-darwin
-        exclude:
-          - os: ubuntu-latest
-            target: x86_64-apple-darwin
-          - os: ubuntu-latest
-            target: aarch64-apple-darwin
-          - os: macos-latest
-            target: x86_64-unknown-linux-gnu
-          - os: macos-latest
-            target: x86_64-pc-windows-gnu
-          - os: macos-latest
-            target: x86_64-pc-windows-msvc
-          - os: windows-latest
-            target: x86_64-apple-darwin
-          - os: windows-latest
-            target: aarch64-apple-darwin
-          - os: windows-latest
-            target: x86_64-unknown-linux-gnu
+        target: [
+          x86_64-unknown-linux-gnu, 
+          x86_64-pc-windows-gnu, 
+          x86_64-apple-darwin, 
+          aarch64-apple-darwin, 
+          x86_64-pc-windows-msvc
+        ]
+      exclude:
+        - os: ubuntu-latest
+          target: x86_64-apple-darwin
+        - os: ubuntu-latest
+          target: aarch64-apple-darwin
+        - os: macos-latest
+          target: x86_64-pc-windows-gnu
+        - os: macos-latest
+          target: x86_64-pc-windows-msvc
+        - os: windows-latest
+          target: x86_64-unknown-linux-gnu
+        - os: windows-latest
+          target: x86_64-apple-darwin
+        - os: windows-latest
+          target: aarch64-apple-darwin
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Rust
-        run: rustup target add ${{ matrix.target }}
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
 
-      - name: Install dependencies (Ubuntu)
+      - name: Install dependencies (Linux only)
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            ${{ matrix.target == 'x86_64-pc-windows-gnu' && 'mingw-w64' || 'openssl pkg-config libssl-dev' }}
+          sudo apt-get install -y openssl pkg-config libssl-dev
+
+      - name: Install dependencies (Windows GNU)
+        if: matrix.target == 'x86_64-pc-windows-gnu'
+        run: choco install mingw
 
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: brew install openssl pkg-config
 
-      - name: Build
+      - name: Configure Rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build the project
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Strip binary
-        run: |
-          if [ "${{ matrix.target }}" = "x86_64-pc-windows-gnu" ]; then
-            x86_64-w64-mingw32-strip target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}.exe
-          elif [ "${{ matrix.target }}" != "x86_64-pc-windows-msvc" ]; then
-            strip target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}
-          fi
+      - name: Strip binary (Linux and macOS)
+        if: matrix.os != 'windows-latest' && matrix.target != 'x86_64-pc-windows-msvc'
+        run: strip target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}
 
-      - name: Package
+      - name: Strip binary (Windows)
+        if: matrix.os == 'windows-latest' && matrix.target == 'x86_64-pc-windows-gnu'
+        run: x86_64-w64-mingw32-strip target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}.exe
+
+      - name: Package binary
         run: |
           rm -rf target/dist
           mkdir -p target/dist
-          cp target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}${{ matrix.target == 'x86_64-pc-windows-gnu' || matrix.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }} target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${{ matrix.target == 'x86_64-pc-windows-gnu' || matrix.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }}
+          cp target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}${{ matrix.os == 'windows-latest' && '.exe' || '' }} target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -91,61 +87,20 @@ jobs:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
           path: target/dist/*
 
-  upload-to-github:
-    name: Upload to GitHub Release
-    needs: build
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        target:
-          - x86_64-unknown-linux-gnu
-          - x86_64-pc-windows-gnu
-          - x86_64-pc-windows-msvc
-          - x86_64-apple-darwin
-          - aarch64-apple-darwin
-        exclude:
-          - os: ubuntu-latest
-            target: x86_64-apple-darwin
-          - os: ubuntu-latest
-            target: aarch64-apple-darwin
-          - os: macos-latest
-            target: x86_64-unknown-linux-gnu
-          - os: macos-latest
-            target: x86_64-pc-windows-gnu
-          - os: macos-latest
-            target: x86_64-pc-windows-msvc
-          - os: windows-latest
-            target: x86_64-apple-darwin
-          - os: windows-latest
-            target: aarch64-apple-darwin
-          - os: windows-latest
-            target: x86_64-unknown-linux-gnu
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
-          path: target/dist
-
       - name: Upload release asset
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${{ matrix.target == 'x86_64-pc-windows-gnu' || matrix.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }}
-          asset_name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${{ matrix.target == 'x86_64-pc-windows-gnu' || matrix.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }}
+          asset_path: target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+          asset_name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
           asset_content_type: application/octet-stream
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-crates-io:
     name: Publish to crates.io
-    needs: [build, upload-to-github]
     runs-on: ubuntu-latest
-    if: matrix.os == 'ubuntu-latest' && matrix.target == 'x86_64-unknown-linux-gnu'
+    needs: build-and-publish
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
