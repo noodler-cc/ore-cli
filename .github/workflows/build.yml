@@ -1,9 +1,8 @@
 name: Build
 
 on:
-  push:
-    branches: ["master"]
-  workflow_dispatch:
+  release:
+    types: [published]
 
 env:
   CARGO_TERM_COLOR: always
@@ -75,6 +74,14 @@ jobs:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
           path: target/dist/*
 
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: target/dist/*
+          asset_name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${{ matrix.target == 'x86_64-pc-windows-gnu' && '.exe' || '' }}
+          asset_content_type: application/octet-stream
+
   build-macos:
     name: Build on macOS
     needs: version
@@ -121,6 +128,14 @@ jobs:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
           path: target/dist/*
 
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: target/dist/*
+          asset_name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
+          asset_content_type: application/octet-stream
+
   build-windows-msvc:
     name: Build on Windows (MSVC)
     needs: version
@@ -157,3 +172,11 @@ jobs:
         with:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-pc-windows-msvc
           path: target/dist/*
+
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: target/dist/*
+          asset_name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-pc-windows-msvc.exe
+          asset_content_type: application/octet-stream
