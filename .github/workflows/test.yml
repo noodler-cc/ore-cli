@@ -9,7 +9,7 @@ on:
       - master
 
 jobs:
-  build_and_test:
+  setup:
     runs-on: ubuntu-latest
 
     steps:
@@ -37,6 +37,17 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-index-
 
+    outputs:
+      cargo-cache: ${{ steps.cache.outputs.cache-hit }}
+
+  build:
+    runs-on: ubuntu-latest
+    needs: setup
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
     - name: Cache cargo build
       uses: actions/cache@v3
       with:
@@ -48,11 +59,53 @@ jobs:
     - name: Build
       run: cargo build --verbose
 
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Cache cargo build
+      uses: actions/cache@v3
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-build-
+
     - name: Run tests
       run: cargo test --verbose
 
+  lint:
+    runs-on: ubuntu-latest
+    needs: setup
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+
     - name: Run clippy
       run: cargo clippy -- -D warnings
+
+  fmt-check:
+    runs-on: ubuntu-latest
+    needs: setup
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
 
     - name: Check formatting
       run: cargo fmt -- --check
