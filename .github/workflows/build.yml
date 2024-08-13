@@ -68,20 +68,23 @@ jobs:
           mkdir -p target/dist
           cp target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}${{ matrix.target == 'x86_64-pc-windows-gnu' && '.exe' || '' }} target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${{ matrix.target == 'x86_64-pc-windows-gnu' && '.exe' || '' }}
 
-      - name: Debug - List files in dist
-        run: ls -alh target/dist
-
       - name: Upload archive
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
           path: target/dist/*
 
+      - name: Wait for file sync
+        run: sleep 5
+
+      - name: Debug - Check file existence
+        run: ls -alh target/dist
+
       - name: Upload release asset
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: target/dist/*
+          asset_path: target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${{ matrix.target == 'x86_64-pc-windows-gnu' && '.exe' || '' }}
           asset_name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${{ matrix.target == 'x86_64-pc-windows-gnu' && '.exe' || '' }}
           asset_content_type: application/octet-stream
 
@@ -125,20 +128,23 @@ jobs:
           mkdir -p target/dist
           cp target/${{ matrix.target }}/release/${{ env.BINARY_NAME }} target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
 
-      - name: Debug - List files in dist
-        run: ls -alh target/dist
-
       - name: Upload archive
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
           path: target/dist/*
 
+      - name: Wait for file sync
+        run: sleep 5
+
+      - name: Debug - Check file existence
+        run: ls -alh target/dist
+
       - name: Upload release asset
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: target/dist/*
+          asset_path: target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
           asset_name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}
           asset_content_type: application/octet-stream
 
@@ -173,19 +179,22 @@ jobs:
           New-Item -ItemType Directory -Force -Path target/dist
           Copy-Item target/x86_64-pc-windows-msvc/release/${{ env.BINARY_NAME }}.exe target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-pc-windows-msvc.exe
 
-      - name: Debug - List files in dist
-        run: Get-ChildItem -Path target/dist
-
       - name: Upload archive
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-pc-windows-msvc
           path: target/dist/*
 
+      - name: Wait for file sync
+        run: Start-Sleep -Seconds 5
+
+      - name: Debug - Check file existence
+        run: Get-ChildItem -Path target/dist
+
       - name: Upload release asset
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: target/dist/*
+          asset_path: target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-pc-windows-msvc.exe
           asset_name: ${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-x86_64-pc-windows-msvc.exe
           asset_content_type: application/octet-stream
