@@ -2,6 +2,8 @@ name: Rust Tests & Linting
 
 on:
   push:
+      branches: # Spécifie que cela ne se déclenche que pour les branches
+      - '**'  # Toutes les branches
     paths:
       - 'src/**'
       - 'Cargo.lock'
