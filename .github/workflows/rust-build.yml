@@ -66,6 +66,7 @@ jobs:
           rm -rf target/dist
           mkdir -p target/dist
           cp target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}${{ matrix.target == 'x86_64-pc-windows-gnu' && '.exe' || '' }} target/dist/${{ env.BINARY_NAME }}-${{ needs.version.outputs.version }}-${{ matrix.target }}${{ matrix.target == 'x86_64-pc-windows-gnu' && '.exe' || '' }}
+      
       - name: Upload archive
         uses: actions/upload-artifact@v4
         with:
