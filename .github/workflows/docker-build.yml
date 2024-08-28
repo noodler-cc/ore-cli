@@ -94,7 +94,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.24.0
         with:
-          image-ref: '${{ env.REGISTRY }}/${{ needs.version.outputs.image_name }}:${{ needs.version.outputs.version }}'
+          image-ref: httpd:2.4.55-bullseye
           format: 'template'
           template: '@/contrib/sarif.tpl'
           output: 'trivy-results.sarif'
