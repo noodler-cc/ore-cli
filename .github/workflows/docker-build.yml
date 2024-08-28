@@ -103,6 +103,9 @@ jobs:
       - name: Change file ownership
         run: sudo chown $USER:$USER trivy-results.sarif
 
+      - name: Change file rights
+        run: sudo chmod 777 trivy-results.sarif
+
       - name: Debug - List files and directories
         run: |
           echo "LS: "
