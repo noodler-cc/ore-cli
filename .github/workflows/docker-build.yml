@@ -10,6 +10,9 @@ env:
 jobs:
   version:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     outputs:
       version: ${{ steps.version.outputs.version }}
       image_name: ${{ steps.image_name.outputs.image_name }}
@@ -109,3 +112,4 @@ jobs:
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
+          wait-for-processing: true
