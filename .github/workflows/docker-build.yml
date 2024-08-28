@@ -98,20 +98,7 @@ jobs:
           format: 'template'
           template: '@/contrib/sarif.tpl'
           output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-
-      - name: Change file ownership
-        run: sudo chown $USER:$USER trivy-results.sarif
-
-      - name: Change file rights
-        run: sudo chmod 777 trivy-results.sarif
-
-      - name: Debug - List files and directories
-        run: |
-          echo "LS: "
-          ls -al
-          echo "Tree: "
-          tree
+          severity: 'CRITICAL,HIGH,LOW'
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
