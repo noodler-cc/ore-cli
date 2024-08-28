@@ -10,9 +10,6 @@ env:
 jobs:
   version:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
     outputs:
       version: ${{ steps.version.outputs.version }}
       image_name: ${{ steps.image_name.outputs.image_name }}
@@ -38,6 +35,8 @@ jobs:
       contents: read
       packages: write
       id-token: write
+      contents: read
+      security-events: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -97,8 +96,10 @@ jobs:
         uses: aquasecurity/trivy-action@0.24.0
         with:
           image-ref: '${{ env.REGISTRY }}/${{ needs.version.outputs.image_name }}:${{ needs.version.outputs.version }}'
-          format: 'sarif'
+          format: 'template'
+          template: '@/contrib/sarif.tpl'
           output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
 
       - name: Change file ownership
         run: sudo chown $USER:$USER trivy-results.sarif
@@ -115,7 +116,5 @@ jobs:
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
         with:
           sarif_file: 'trivy-results.sarif'
-          wait-for-processing: true
