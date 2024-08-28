@@ -91,7 +91,7 @@ jobs:
       #     cosign sign --yes ${images}
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.24.2
+        uses: aquasecurity/trivy-action@0.24.0
         with:
           image-ref: '${{ env.REGISTRY }}/${{ needs.version.outputs.image_name }}:${{ needs.version.outputs.version }}'
           format: 'sarif'
